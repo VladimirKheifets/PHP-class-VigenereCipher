@@ -1,0 +1,98 @@
+/*
+Demo PHP-class VigenereCipher
+Version: 1.0, 2026-07-22
+Author: Vladimir Kheifets (vladimir.kheifets.@online.de)
+Copyright (c) 2026 Vladimir Kheifets All Rights Reserved
+*/
+
+body{
+ font-family: arial;
+ font-size: 12pt;
+ padding: 20pt 0pt 20pt 20pt;
+}
+div{
+  width:calk(100%-20px);
+  overflow: hidden;
+  white-space: pre-wrap;
+  padding: 10pt;
+  margin-top: 10px;
+  border: 1px solid #CCC;
+}
+h1,h2{
+  width:calk(100%-20px);
+  font-weight: normal;
+  font-size: 20px;
+  text-align: center;
+}
+
+h2{
+  font-size: 12pt;
+}
+
+textarea{
+  margin-top: 10px;
+  width: 150%;
+  height: 200px;
+  font-size: 12pt;
+}
+
+textarea:read-only {
+  margin-top: 0px;
+  width: 150%;
+  height: 0px;
+  border: 0px;
+  resize:none;
+}
+
+
+form{
+    padding: 0px;
+    align-items: center;
+    max-width: 300px;
+    text-align: left;
+    margin-left: auto;
+    margin-right: auto;
+    white-space: pre;
+}
+
+input{margin-right: 5px}
+
+input[type='text']{
+    width: 300px;
+    font-size: 12pt;
+}
+
+table{
+   border-collapse: collapse;
+}
+td{
+    padding:0 0 0 5;
+    letter-spacing: 5px;
+}
+.rand{
+    font-weight: bold;
+    background-color: #E4E4E4;
+}
+
+.report td{
+  padding:2 5 2 5;
+  max-width: 80px;
+  width: 80px;
+  overflow: hidden;
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+span{
+    position: absolute;
+    z-index: 1;
+    margin-top:  10px;
+    margin-left: 10px;
+    height: auto;
+    width:100px;
+    overflow: hidden;
+    white-space: pre-wrap;
+}
+
+.err{color: red}
+
