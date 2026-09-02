@@ -1,4 +1,4 @@
-# PHP-class VigenereCipher
+# PHP class VigenereCipher
 
 ### Version: 1.0, 2026-07-22
 
@@ -28,7 +28,7 @@ Commanding Admiral of Submarines, S.M.H.S. East, and Comsubs East from Chief of 
 Q8u0v3r2vsnQr6q3v1g8ne' p6i333s"ee'oZsPk'og0i4,mguvpnS26z6w8g0i4,it!w0nSv2mrn4tm"52i6,j0v7w7meZ12'qy6q:g.mu1ysyam8sv8xe33g"4u8uzü7lqtiQ!2u'ug'we2ö789fTvvtmjq1 1saTv!smz5v9w8v4n01mZ833s6üvpxogmIp0072wxnv2!aO937!wy:nWmXge2q1yze9!s!a3x22'mj'9o'qz8i7!irz0qmi4n4tm  b,g1w6"8g8ve,ysm94,o
 >
 >Decrypted with a known key: ENIGMA
-
+>
 >**Decrypted text:**
 >
 >enigma m4 message: p1030685.
