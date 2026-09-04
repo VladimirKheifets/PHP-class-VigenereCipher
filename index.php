@@ -136,6 +136,7 @@ require("sources.php");
 
 $cv = new VigenereCipher($freqAlpha);
 $cv -> setDictionary();
+$cv -> setStatNGramsFreq();
 
 if(isset($_POST["show"]))
     $cv -> showVigenеreSquare();

@@ -856,7 +856,7 @@ private function NGramsFreqToStats($txt){
                      echo <<<HTML
                      <b>Key correction (Crib Dragging):</b>
 
-                     The key was corrected using the crib <b>dragging method</b>.
+                     The key was corrected using the <b>crib dragging method</b>.
                      <b>Corrected key:</b> $cribDraggingKey(length: $keyLen)
                      $statReport
                      <b>Final decrypted text:</b>
