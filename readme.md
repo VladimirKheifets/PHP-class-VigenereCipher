@@ -41,7 +41,15 @@ Commanding Admiral of submarines, s.M.H.s. east, and Comsubs east from Chief of 
 >with an unknown key length **ranging from 2 to 12 characters**.
 >**Recovered key:** ENIGMA (length: 6)
 >
->**Index of coincidence** of the decrypted text: 0.06255
+>**Statistical cryptanalysis of decrypted text**
+>
+>**Index of coincidence (IC):** 0.06255
+>
+>Analysis of the trigrams frequency
+>
+>**Standard deviation (SD):** 0.0077
+>
+>**Interquartile Range (IQR):** 0.00434
 >
 >**Decrypted text:**
 >
@@ -51,6 +59,8 @@ Commanding Admiral of submarines, s.M.H.s. east, and Comsubs east from Chief of 
 >[Source text for entcrypted - Translation (preliminary)](https://enigma.hoerenberg.com/index.php?cat=The%20U534%20messages&page=P1030685)
 >
 >
+
+
 
 ### 1. PHP-class VigenereCipher
 
@@ -635,68 +645,122 @@ class VigenereCipher{
     }
     //-----------------------------------------------------
 
-    public function getNgrams($word, $n=3){
-        $word = strtolower($word);
+    public function getNgrams($txt, $n=3){
+        $txt = strtolower(preg_replace(self::$nL, "", $txt));
         $NGrams = [];
-        $length = mb_strlen($word, 'UTF-8');
+        $length = mb_strlen($txt, 'UTF-8');
         $length = $n>1?$length-$n:$length-1;
         for ($i = 0; $i <= $length; $i++)
-            $NGrams[] = mb_substr($word, $i, $n);
+            $NGrams[] = mb_substr($txt, $i, $n);
         return $NGrams;
     }
 
     //-----------------------------------------------------
 
-    public function getWordFromNgrams($NGrams) {
-      $word = $NGrams[0];
-      $iBegin = mb_strlen($word)-1;
+    public function getTextFromNgrams($NGrams) {
+      $txt = $NGrams[0];
+      $iBegin = mb_strlen($txt)-1;
       unset($NGrams[0]);
       foreach($NGrams as $item){
-        $word .= mb_substr($item, $iBegin);
+        $txt .= mb_substr($item, $iBegin);
       }
-      return $word;
+      return $txt;
     }
 
     //-----------------------------------------------------
 
-    public function getWordNgramsStat($word, $n=3){
-        $word = strtolower($word);
-        $sumFr = [];
-        $NGrams = $this->getNgrams($word, $n);
+    public function getNGramsFreq($txt, $n=3){
+        $NGramsFreq = [];
+        $NGrams = $this->getNgrams($txt, $n);
         foreach($NGrams as $NGram){
             $freq = self::$statNGramsFreq[$n][$NGram] ?? 0;
-            $sumFr[$NGram] = $freq;
+            $NGramsFreq[$NGram] = $freq;
         }
-
-        $sum = array_sum($sumFr);
-        $mean = $sum/count($sumFr);
-
-        foreach($sumFr as $NGram => $freq)
-            $deviations[$NGram] = $freq - $mean;
-
-        return [
-            "NGrams" => $NGrams,
-            "freq" => $sumFr,
-            "sum" => $sum,
-            "mean" => $mean,
-            "deviations" => $deviations,
-            "min" => min($sumFr)
-        ];
+        return  $NGramsFreq;
     }
 
-    //-----------------------------------------------------
+//-----------------------------------------------------
+
+    public function  getDeviationStats($data){
+        $sum = array_sum($data);
+        $count = count($data);
+        $mean = $sum/$count;
+        $squaredDeviationsSum = 0;
+
+        foreach($data as $key => $value){
+            $deviation = $value - $mean;
+            $deviations[$key] = $deviation;
+            $squaredDeviationsSum += pow($deviation, 2);
+        }
+
+        $divisor = $count - 1;
+        $variance = $divisor > 0 ? ($squaredDeviationsSum / $divisor) : 0.0;
+        $standardDeviation = sqrt($variance);
+        return (object) compact("variance", "standardDeviation", "deviations", "mean" );
+    }
+
+//-----------------------------------------------------
+
+    public function getQuantileStats($data, $getMedian = false) {
+        $count = count($data);
+        if ($count < 2) return 0;
+        if($getMedian)
+        {
+            $middle = floor(($count - 1) / 2);
+            if ($count % 2 !== 0)
+            {
+                return $data[$middle];
+            }
+            else
+            {
+                return ($data[$middle] + $data[$middle + 1]) / 2;
+            }
+        }
+
+        sort($data);
+
+        $middle = floor($count / 2);
+
+        if ($count % 2 !== 0) {
+            $lowerHalf = array_slice($data, 0, $middle);
+            $upperHalf = array_slice($data, $middle + 1);
+        }
+        else
+        {
+            $lowerHalf = array_slice($data, 0, $middle);
+            $upperHalf = array_slice($data, $middle);
+        }
+
+        $Q1 = self::getQuantileStats($lowerHalf, 1);
+        $Q3 = self::getQuantileStats($upperHalf, 1);
+        $Q2 = self::getQuantileStats($data, 1);
+        $IQR = $Q3 - $Q1;
+        $min = min($data);
+        $max = max($data);
+        $range = end($data)-$data[0];
+        return (object) compact("Q1","Q2","Q3","IQR","min","max","range");
+    }
+//-----------------------------------------------------
+private function NGramsFreqToStats($txt){
+    $NGramsFreq = $this -> getNGramsFreq($txt);
+    $SD = $this -> getDeviationStats($NGramsFreq) -> standardDeviation;
+    $IQR = $quantileStats = $this -> getQuantileStats($NGramsFreq)-> IQR;
+    return compact("SD", "IQR");
+}
+//-----------------------------------------------------
 
     public function entcryptedReport($source, $key, $keyLen){
 
         $entcryptedText = $this -> entcrypter($key, $source);
         $sourceLen = strlen($source);
         echo <<<HTML
-        Source text:
-        <div>$source</div>
-        Text length: <b>$sourceLen</b>
 
-        Entcrypted with a known key: <b>$key</b>, key length: <b>$keyLen</b>
-        entcryptedText:
+        <b>Source text:</b>
+        <b>Text length:</b> $sourceLen
+        <div>$source</div>
+
+        <b>Entcrypted with key:</b> $key (length: $keyLen)
+        <b>Entcrypted text:</b>
         <div>$entcryptedText</div>
 
         HTML;
@@ -712,9 +776,9 @@ class VigenereCipher{
         {
             $entcryptedLen = strlen($entcryptedText);
             echo <<<HTML
-            Entcrypted text:
+            <b>Entcrypted text:</b>
             <div>$entcryptedText</div>
-            Text length: <b>$entcryptedLen</b>
+            <b>Text length:</b> $entcryptedLen
 
             HTML;
         }
@@ -725,8 +789,8 @@ class VigenereCipher{
 
            echo <<<HTML
 
-           Decrypted with a known key: <b>$key</b>
-           decryptedText:
+           <b>Decrypted with a known key:</b> $key
+           <b>Decrypted text:</b>
            <div>$decryptedText</div>
 
            HTML;
@@ -738,19 +802,21 @@ class VigenereCipher{
 
            foreach($resDecrypter as  $val)
            {
-              extract($val);
+                extract($val);
+                extract($this->NGramsFreqToStats($decText));
+                $statReport = self::statReport($IC, $SD, $IQR);
+                echo <<<HTML
 
-              echo <<<HTML
+                <b>Cipher breaking (Frequency Analysis):</b>
 
-              Decrypted with an unknown key up {$keysLenFromTo[0]} to <b>{$keysLenFromTo[1]}</b> characters long
-              The key was found using frequency analysis.
-              Find key: <b>$key</b> key length: <b>$keyLen</b>
-              The index of coincidence of the decrypted text: <b>$IC</b>
-              decryptedText:
-              <div>$decText</div>
+                The cipher text was analyzed using <b>frequency analysis</b>
+                with an unknown key length ranging <b>from {$keysLenFromTo[0]} to {$keysLenFromTo[1]}</b> characters.
+                <b>Recovered key:</b> $key (length: $keyLen)
+                $statReport
+                <b>Decrypted text:</b>
+                <div>$decText</div>
 
-
-              HTML;
+                HTML;
               $keyD = $key;
 
 
@@ -759,36 +825,71 @@ class VigenereCipher{
               $ICarr = [];
               foreach($res as $iR => $cribDraggingKey)
               {
-                     $decryptedTextArr[$iR] = $this -> decrypter($entcryptedText, $cribDraggingKey );
-                     $ICarr[$iR] = $this -> getIndexCoincidence($decryptedTextArr[$iR]);
-                     /*
-                     echo <<<HTML
-                     IC: {$ICarr[$iR]}
-                     Decrypted with cribDraggingKey: <b>$cribDraggingKey</b>
-                     decryptedText:
-                     <div>{$decryptedTextArr[$iR]}</div>
-                     HTML;
-                     */
+                    $decryptedTextArr[$iR] = $this -> decrypter($entcryptedText, $cribDraggingKey );
+                    $NGramsFreq = $this -> getNGramsFreq($decryptedTextArr[$iR]);
+                    extract($this->NGramsFreqToStats($decryptedTextArr[$iR]));
+                    $statReport = self::statReport($IC, $SD, $IQR);
+
+                    $ICarr[$iR] = $IC = $this -> getIndexCoincidence($decryptedTextArr[$iR]);
+                    $SDarr[$iR] = $SD;
+                    $IQRarr[$iR] = $IQR;
+                    $statReport = self::statReport($IC, $SD, $IQR);
+                    if(debug)
+                    {
+                        echo <<<HTML
+                        $statReport
+                        <b>Corrected key:</b> $cribDraggingKey(length: $keyLen)
+                        <b>Decrypted text:</b>
+                        <div>{$decryptedTextArr[$iR]}</div>
+                        HTML;
+                    }
               }
 
-              $iR  = array_search(max($ICarr), $ICarr);
+              $iR  = array_search(max($SDarr), $SDarr);
               $cribDraggingKey = $res[$iR];
-              if($cribDraggingKey != $keyD )
+                $IC = $ICarr[$iR];
+                $SD = $SDarr[$iR];
+                $IQ = $IQRarr[$iR];
+              if($cribDraggingKey != $keyD AND $ICarr[$iR] > self::$languageICmin)
               {
+                     $statReport = self::statReport($IC, $SD, $IQR,1);
                      echo <<<HTML
-                     Key value correction using the "crib dragging" method.
-                     Find key: <b>$cribDraggingKey</b>
-                     decryptedText:
+                     <b>Key correction (Crib Dragging):</b>
+
+                     The key was corrected using the crib <b>dragging method</b>.
+                     <b>Corrected key:</b> $cribDraggingKey(length: $keyLen)
+                     $statReport
+                     <b>Final decrypted text:</b>
                      <div>{$decryptedTextArr[$iR]}</div>
-                     The index of coincidence of the decrypted text: {$ICarr[$iR]}
+
                      HTML;
               }
            }
 
        echo "<hr>";
     }
-}
 
+//-----------------------------------------------------
+
+    static function statReport($IC, $SD, $IQR, $final=null){
+        $SD = round($SD, 5);
+        $IQR = round($IQR, 5);
+        $final = ($final)?" final":"";
+        return <<<HTML
+
+        <b>Statistical cryptanalysis of$final decrypted text</b>
+
+        <b>Index of coincidence (IC)</b>: $IC
+        Analysis of the trigrams frequency
+        <b>Standard deviation (SD): </b>$SD
+        <b>Interquartile Range (IQR)</b>: $IQR
+
+        HTML;
+    }
+
+//-----------------------------------------------------
+
+}
 
 ```
 
