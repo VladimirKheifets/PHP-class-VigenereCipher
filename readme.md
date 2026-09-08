@@ -47,9 +47,9 @@ Commanding Admiral of submarines, s.M.H.s. east, and Comsubs east from Chief of 
 >
 >Analysis of the trigrams frequency
 >
->**Standard deviation (SD):** 0.0077
+>**Standard deviation (SD):** 0.00983
 >
->**Interquartile Range (IQR):** 0.00434
+>**Interquartile Range (IQR):** 0.00499
 >
 >**Decrypted text:**
 >
