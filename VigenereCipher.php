@@ -559,21 +559,33 @@ class VigenereCipher{
 	public function setStatNGramsFreq($n=3, $la = "eng"){
 	    self::$statNGramsFreq[$n] = json_decode(file_get_contents($la.$n."Grams.json"), 1);
 	}
+
+	//-----------------------------------------------------
+
+	public function getNgramsFromWord($word, $wordLen,  &$NGrams, $n=3){
+		$word = strtolower($word);
+	    $wordLen = $n>1?$wordLen-$n:$wordLen-1;
+	    for ($i = 0; $i <= $wordLen; $i++)
+	        $NGrams[] = mb_substr($word, $i, $n);
+	}
 	//-----------------------------------------------------
 
 	public function getNgrams($txt, $n=3){
-		$txt = strtolower(preg_replace(self::$nL, "", $txt));
-	    $NGrams = [];
-	    $length = mb_strlen($txt, 'UTF-8');
-	    $length = $n>1?$length-$n:$length-1;
-	    for ($i = 0; $i <= $length; $i++)
-	        $NGrams[] = mb_substr($txt, $i, $n);
+		$NGrams = [];
+		$words = preg_split(self::$nL, strtolower($txt));
+		foreach($words as $word){
+			$wordLen = mb_strlen($word, 'UTF-8');
+			if($wordLen == $n)
+				$NGrams[] = $word;
+			else if($wordLen > $n)
+				$this->getNgramsFromWord($word, $wordLen, $NGrams, $n);
+		}
 	    return $NGrams;
 	}
 
 	//-----------------------------------------------------
 
-	public function getTextFromNgrams($NGrams) {
+	public function setWordsFromNgrams($NGrams) {
 	  $txt = $NGrams[0];
 	  $iBegin = mb_strlen($txt)-1;
 	  unset($NGrams[0]);
