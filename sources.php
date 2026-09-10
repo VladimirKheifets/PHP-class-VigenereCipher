@@ -17,6 +17,7 @@ if($inputTxt = filter_input(INPUT_POST, "inputTxt"))
 		$entcryptedText = $txt;
 	else
 {
+$sources[] = "When you are stuck in traffic and switch to a different lane, your old lane suddenly starts moving faster than the new one.";
 
 $sources[] = "The chances of an open-faced marmalade sandwich landing face down on a floor covering are directly correlated to the newness and cost of the carpet.";
 

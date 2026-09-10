@@ -82,6 +82,7 @@ Commanding Admiral of submarines, s.M.H.s. east, and Comsubs east from Chief of 
 ### File VigenereCipher.php
 
 ```php
+
 <?PHP
 
 /*
@@ -261,7 +262,7 @@ class VigenereCipher{
 
     //---------------------------------------------------------------------------
 
-    public function decrypter($entText, $key, $outputAllSolutions = false ){
+    public function decrypter($entText, $key){
 
         $clearText = strtoupper(preg_replace(self::$nAlp, "", $entText));
         $clearTextLen = strlen($clearText);
@@ -269,23 +270,25 @@ class VigenereCipher{
         if(is_array($key))
         {
             $keysLen = $keysLen2 = range(...$key);
-            $resDec = [];
+            if($clearTextLen > 140)
+            {
+                $resDec = [];
+                if(debug) echo "calc Keylengths by Friedman\n";
 
-            if(debug) echo "calc Keylengths by Friedman\n";
-            $keysLen = $keysLen2 = range(...$key);
-            $keyLenIC = $this-> calcKeylengthsByFriedman($clearText, $clearTextLen, $keysLen);
-            if(debug) print_r($keyLenIC);
-            if(debug) print_r($keysLen);
-            $resDec = $this -> keylengthsToKeyDec($entText, $clearText, $keysLen, $outputAllSolutions);
-
-            if(count($resDec) == 0)
+                $keyLenIC = $this-> calcKeylengthsByFriedman($clearText, $clearTextLen, $keysLen);
+                if(debug) print_r($keyLenIC);
+                if(debug) print_r($keysLen);
+                $resDec = $this -> keylengthsToKeyDec($entText, $clearText, $keysLen);
+            }
+            else
             {
                 if(debug) echo "calc Keylengths by Kasiski\n";
+
                 $keysLen = $keysLen2;
                 $distFactotor = $this-> calcKeylengthsByKasiski($clearText, $clearTextLen, $keysLen);
                 if(debug) print_r($distFactotor);
                 if(debug) print_r($keysLen);
-                $resDec = $this -> keylengthsToKeyDec($entText, $clearText, $keysLen, $outputAllSolutions);
+                $resDec = $this -> keylengthsToKeyDec($entText, $clearText, $keysLen);
             }
             return  $resDec;
         }
@@ -335,43 +338,31 @@ class VigenereCipher{
     }
 
     //---------------------------------------------------------------------------
-    private function keylengthsToKeyDec($entText, $clearText, $keysLen, $outputAllSolutions=false){
+    private function keylengthsToKeyDec($entText, $clearText, $keysLen){
 
         $output =  [];
-
+        $SDarr = [];
         $languageICmin = self::$languageICmin;
-        foreach ($keysLen as $keyLen)
+        foreach ($keysLen as $iKey=>$keyLen)
         {
             $key = $this ->  findKey($clearText, $keyLen);
             $decText = $this -> decrypter($entText, $key);
             $IC = $this -> getIndexCoincidence($decText);
+            $NGramsFreq = $this -> getNGramsFreq($decText);
+            $SDarr[$iKey] = $SD = $this -> getDeviationStats($NGramsFreq) -> standardDeviation;
+            $tmp = compact("decText", "key", "keyLen", "IC", "SD");
+            if(debug) echo  "184: $keyLen $key  $IC $SD \n $decText<hr>";
 
-            $tmp = compact("decText", "key", "keyLen", "IC");
-            if(debug) echo  "184: $keyLen $key  $IC \n $decText<hr>";
-            if($outputAllSolutions)
-            {
-                $output[] = $tmp;
-            }
-            else if($IC > $languageICmin)
-            {
-                if($keyLen>3 AND $keyLen % 2 == 0){
-                    $likelyKeyLen  = $keyLen / 2;
-                    $likelyKey = substr($key, 0, $likelyKeyLen );
-                    if($likelyKey === substr($key, $likelyKeyLen ))
-                    {
-                        $key = $likelyKey;
-                        $keyLen = $likelyKeyLen ;
-                        $tmp = compact("decText", "key", "keyLen", "IC");
-                    }
-                }
-
-                $output[] = $tmp;
-                if(debug) echo  "191: $keyLen $key $IC \n";
-                break;
-            }
-
+            $output[$iKey][] = $tmp;
+            if(debug) echo  "191: $keyLen $key $IC $SD\n";
         }
-        return $output;
+        if($SDarr){
+            $maxSD = max($SDarr);
+            $iS = array_search($maxSD, $SDarr);
+            return $output[$iS];
+        }
+        else
+            return $output;
     }
     //---------------------------------------------------------------------------
     public function getIndexCoincidence($entText){
@@ -409,27 +400,15 @@ class VigenereCipher{
             $IC = $this -> getIndexCoincidence($block);
             if($IC>0)
                 $keysLenIC[$keyLen] = $IC;
-
-        }
-
-        $minDeviation = - INF;
-        $meanIC = array_sum($keysLenIC) / count($keysLenIC);
-
-        $deviations = [];
-
-        foreach ($keysLenIC as $keyLen => $IC)
-        {
-            $deviation = $IC - $meanIC;
-            if($deviation <= 0 AND $deviation > $minDeviation)
-                $minDeviation = $deviation;
-            $deviations[$keyLen] = $deviation;
         }
 
         $keysLen = [];
 
+        $medians  = $this->getQuantileStats($keysLenIC) -> Q2;
+
         foreach($keysLenIC as $keyLen=>$IC){
-            if($deviations[$keyLen] >= $minDeviation OR $IC >= $languageICmin)
-                $keysLen[]=$keyLen;
+            if($IC >= $medians)
+                $keysLen[] = $keyLen;
             else
                 unset($keysLenIC[$keyLen]);
         }
@@ -600,7 +579,7 @@ class VigenereCipher{
         }
         $wordPatern = "(".implode("|",$subPattern).")";
         preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m[0]);
-        //print_r($m[0]);
+
         if( self::arrayChangeValueCase($m[0][0]) )
         {
             return $m[0][0];
@@ -691,7 +670,7 @@ class VigenereCipher{
         return  $NGramsFreq;
     }
 
-    //-----------------------------------------------------
+//-----------------------------------------------------
 
     public function  getDeviationStats($data){
         $sum = array_sum($data);
@@ -902,12 +881,13 @@ private function NGramsFreqToStats($txt){
 //-----------------------------------------------------
 
 }
-
+##############################################################
 ```
 
 ### 2. File  index.php
 
 ```php
+
     <!--
 
     Demo PHP-class VigenereCipher
