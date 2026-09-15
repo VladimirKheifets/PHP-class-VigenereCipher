@@ -253,32 +253,56 @@ class VigenereCipher{
 	}
 
 	//---------------------------------------------------------------------------
+
 	private function keylengthsToKeyDec($entText, $clearText, $keysLen){
 
 		$output =  [];
-		$SDarr = [];
+
 		$languageICmin = self::$languageICmin;
-		foreach ($keysLen as $iKey=>$keyLen)
+		foreach ($keysLen as $keyLen)
 		{
 		    $key = $this ->  findKey($clearText, $keyLen);
 		    $decText = $this -> decrypter($entText, $key);
 		    $IC = $this -> getIndexCoincidence($decText);
-		    $NGramsFreq = $this -> getNGramsFreq($decText);
-			$SDarr[$iKey] = $SD = $this -> getDeviationStats($NGramsFreq) -> standardDeviation;
-		    $tmp = compact("decText", "key", "keyLen", "IC", "SD");
-		    if(debug) echo  "184: $keyLen $key  $IC $SD \n $decText<hr>";
 
-		    $output[$iKey][] = $tmp;
-		    if(debug) echo  "191: $keyLen $key $IC $SD\n";
+		    $tmp = compact("decText", "key", "keyLen", "IC");
+		    if(debug) echo  "308: $keyLen $key  $IC $languageICmin\n $decText<hr>";
+		   	//if(round($IC, 2) >= $languageICmin)
+		    if($IC >= $languageICmin)
+		    {
+		    	if(self::clearKey($key, $keyLen))
+		       		$tmp = compact("decText", "key", "keyLen", "IC");
+		        $output[] = $tmp;
+		        if(debug) echo  "191: $keyLen $key $IC \n";
+		        break;
+		    }
+
 		}
-		if($SDarr){
-			$maxSD = max($SDarr);
-			$iS = array_search($maxSD, $SDarr);
-			return $output[$iS];
-		}
-		else
-			return $output;
+		return $output;
 	}
+
+	//---------------------------------------------------------------------------
+
+	static function clearKey(&$key, &$keyLen){
+	    $i=2;
+	    while($i < $keyLen){
+	       $nRep = $keyLen/$i;
+	       if($keyLen % $i === 0)
+	       {
+	           $subPattern = substr($key, 0, $i);
+	           $pattern = "/^($subPattern){".$nRep."}$/";
+	           if(preg_match($pattern, $key))
+	           {
+	                $key = $subPattern;
+	                $keyLen = $i;
+	                return true;
+	           }
+	       }
+	       $i++;
+	    }
+	    return false;
+	}
+
 	//---------------------------------------------------------------------------
 	public function getIndexCoincidence($entText){
 
@@ -313,20 +337,28 @@ class VigenereCipher{
 		    }
 
 		    $IC = $this -> getIndexCoincidence($block);
-			if($IC>0)
+			if($IC > 0)
 				$keysLenIC[$keyLen] = $IC;
 		}
 
 		$keysLen = [];
 
+		/*
 		$medians  = $this->getQuantileStats($keysLenIC) -> Q2;
 
 		foreach($keysLenIC as $keyLen=>$IC){
+			//if($keyLen < 7) $IC *= 1.05;
+			//else if($keyLen > 6) $IC *= 1.5;
+			echo "325: $keyLen $IC $medians ".($IC >= $medians)."\n";
 			if($IC >= $medians)
 				$keysLen[] = $keyLen;
 			else
 				unset($keysLenIC[$keyLen]);
 		}
+		*/
+		arsort($keysLenIC);
+		//print_r($keysLenIC);
+		$keysLen = array_keys($keysLenIC);
 
 		return $keysLenIC;
 	}
@@ -472,65 +504,72 @@ class VigenereCipher{
 
 	//-----------------------------------------------------
 
-	public function cribDraggingDecrypter($word){
-	    $pattB = "~\b";
-	    $pattE = "\b~iu";
-	    $wordInUperCase = strtoupper($word) === $word;
-	    //~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	    /*
-	    $wordPatern = $word;
-	    preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m);
-	    if(count($m[0]) == 1){
-	        return 1;
-	    }
-	    */
-	    //~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	public function fuzzySearchKeys($word){
+        $pattB = "~\b";
+        $pattE = "\b~iu";
+        $wordInUperCase = strtoupper($word) === $word;
 
-	    $subPattern = [];
-	    for($i=0; $i<strlen($word); $i++){
-	        $tmp = $word;
-	        $tmp[$i] = ".";
-	        $subPattern[] = $tmp;
-	    }
-	    $wordPatern = "(".implode("|",$subPattern).")";
-	    preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m[0]);
+        $subPattern = [];
+        $wordLen = strlen($word);
+        for($i=0; $i<$wordLen; $i++){
+            $tmp = $word;
+            $tmp[$i] = ".";
+            $subPattern[] = $tmp;
+        }
+        $wordPatern = "(".implode("|",$subPattern).")";
+        preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m[0]);
+        //print_r($m[0]);
+        if( self::arrayChangeValueCase($m[0][0]) )
+        {
+            return $m[0][0];
+        }
 
-	    if( self::arrayChangeValueCase($m[0][0]) )
-	    {
-	    	return $m[0][0];
-	    }
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        $i=0;
+        $wordLen = strlen($word);
+        $subPattern = $word[0];
+        while($i < $wordLen){
+            $k = strlen($subPattern);
+            $wordPatern = str_pad($subPattern, $wordLen, ".");
+            preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m[1]);
+            //echo "171:$wordLen $i C: ".count($m[1][0]),"\n";
+            //print_r($m[1][0]);
+            if(!$m[1][0])
+            {
+                $subPattern[$k-1] = ".";
+            }
+            else If(self::arrayChangeValueCase($m[1][0]))
+                break;
+            else
+            {
+                //echo "583:$wordLen $i C: ".count($m[1][0]),"\n";
+                if(count($m[1][0]) <= $wordLen*2){ //$wordLen
+            		//self::arrayChangeValueCase($m[1][0]);
+            		break;
+            	}
 
-	    //~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	    $i=0;
-	    $wordLen = strlen($word);
-	    $subPattern = $word[0];
-	    while($i < $wordLen){
-	        $k = strlen($subPattern);
-	        $wordPatern = str_pad($subPattern, $wordLen, ".");
-	        preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m[1]);
+                $i += 1;
+                if(isset($word[$i]))
+                    $subPattern .= $word[$i];
+                else
+                    break;
+            }
+        }
 
-	        if(!$m[1][0])
-	        {
-	            $subPattern[$k-1] = ".";
-	        }
-	        else If(self::arrayChangeValueCase($m[1][0]))
-	        	break;
-	        else
-	        {
-	            $i += 1;
-	            if(isset($word[$i]))
-	                $subPattern .= $word[$i];
-	            else
-	                break;
-	        }
-	    }
-
-	    //~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	    if(count($m[1][0]) == 1 )
-	        return $m[1][0];
-	    else
-	        return array_unique(array_merge($m[0][0], $m[1][0]));
-	}
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if($wordLen > 6)
+        {
+	        $subPattern = str_pad(substr($word,-4), $wordLen, ".",STR_PAD_LEFT);
+	        preg_match_all($pattB.$subPattern.$pattE,  self::$dictionary, $m[2]);
+	        self::arrayChangeValueCase($m[2][0]);
+	        $m[1][0] = array_unique(array_merge($m[1][0], $m[2][0]));
+    	}
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if(count($m[1][0]) == 1 )
+            return $m[1][0];
+        else
+            return array_unique(array_merge($m[0][0], $m[1][0]));
+    }
 
 	//-----------------------------------------------------
 
@@ -676,7 +715,7 @@ private function NGramsFreqToStats($txt){
 //-----------------------------------------------------
 
 	public function decryptedReport($entcryptedText, $key=null){
-
+	global $keysError;
     global $keysLenFromTo;
     	if($_POST['inputTxt'] == 3 )
     	{
@@ -691,6 +730,7 @@ private function NGramsFreqToStats($txt){
 
        if($key)
        {
+       		$fuzzySearchKey="";
            $decryptedText = $this -> decrypter($entcryptedText, $key );
 
            echo <<<HTML
@@ -710,6 +750,7 @@ private function NGramsFreqToStats($txt){
            {
               	extract($val);
 				extract($this->NGramsFreqToStats($decText));
+				$prevIC = $IC;
 				$statReport = self::statReport($IC, $SD, $IQR);
 				echo <<<HTML
 
@@ -725,13 +766,14 @@ private function NGramsFreqToStats($txt){
 				HTML;
               $keyD = $key;
 
-
-              $res = $this -> cribDraggingDecrypter($keyD);
+              $res = $this -> fuzzySearchKeys($keyD);
+              if(debug) echo "805: fuzzySearchKeys\n";
+              if(debug) print_r($res);
               $decryptedTextArr = [];
               $ICarr = [];
-              foreach($res as $iR => $cribDraggingKey)
+              foreach($res as $iR => $fuzzySearchKey)
               {
-                    $decryptedTextArr[$iR] = $this -> decrypter($entcryptedText, $cribDraggingKey );
+                    $decryptedTextArr[$iR] = $this -> decrypter($entcryptedText, $fuzzySearchKey );
                     $NGramsFreq = $this -> getNGramsFreq($decryptedTextArr[$iR]);
                     extract($this->NGramsFreqToStats($decryptedTextArr[$iR]));
 					$statReport = self::statReport($IC, $SD, $IQR);
@@ -744,26 +786,28 @@ private function NGramsFreqToStats($txt){
                     {
 						echo <<<HTML
 						$statReport
-						<b>Corrected key:</b> $cribDraggingKey(length: $keyLen)
+						<b>Corrected key:</b> $fuzzySearchKey(length: $keyLen)
 						<b>Decrypted text:</b>
 						<div>{$decryptedTextArr[$iR]}</div>
+						<hr>
 						HTML;
 					}
               }
 
-              $iR  = array_search(max($SDarr), $SDarr);
-              $cribDraggingKey = $res[$iR];
+              $iR  = array_search(max($ICarr), $ICarr);
+              $fuzzySearchKey = $res[$iR];
 				$IC = $ICarr[$iR];
 				$SD = $SDarr[$iR];
 				$IQ = $IQRarr[$iR];
-              if($cribDraggingKey != $keyD AND $ICarr[$iR] > self::$languageICmin)
+
+              if($fuzzySearchKey != $keyD )
               {
                      $statReport = self::statReport($IC, $SD, $IQR,1);
                      echo <<<HTML
-                     <b>Key correction (Crib Dragging):</b>
+                     <b>Key correction (Fuzzy Search):</b>
 
-                     The key was corrected using the <b>crib dragging method</b>.
-                     <b>Corrected key:</b> $cribDraggingKey(length: $keyLen)
+                     The key was corrected using the <b>Fuzzy Search method</b>.
+                     <b>Corrected key:</b> $fuzzySearchKey(length: $keyLen)
                      $statReport
                      <b>Final decrypted text:</b>
                      <div>{$decryptedTextArr[$iR]}</div>
@@ -771,8 +815,15 @@ private function NGramsFreqToStats($txt){
                      HTML;
               }
            }
+           if(isset($keyE) AND isset($keyD)){
+           	$txtLen = strlen($entcryptedText);
+           	$ok = $fuzzySearchKey ===  $keyE;
+           		if($keyD != $keyE )  $keysError[] = compact("txtLen","keyE","keyD","fuzzySearchKey", "ok");
+           }
+
 
        echo "<hr>";
+
 	}
 
 //-----------------------------------------------------

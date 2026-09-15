@@ -145,28 +145,68 @@ if(isset($_POST["show"]))
 $keysLenFromTo = [2,12];
 $error = [];
 define("debug", false);
+$keysError = [];
 
 if($inputTxt = filter_input(INPUT_POST, "inputTxt") == 3)
 {
     $cv -> decryptedReport($entcryptedText, strtoupper($_POST["key"]));
 }
 
-$sourcesCount = count($sources);
-$keysCount = count($randomWords);
 
-foreach($sources as $iSorce => $source)
-{
-    foreach($randomWords as $key)
+    $sourcesCount = count($sources);
+    $keysCount = count($randomWords);
+
+    foreach($sources as $iSorce => $source)
     {
-        $keyLen = $keyLenE = strlen($key);
-        $keyE = $key;
+        foreach($randomWords as $key)
+        {
+            $keyLen = $keyLenE = strlen($key);
+            $keyE = $key;
 
-        $entcryptedText = $cv -> entcryptedReport($source, $key, $keyLen);
-        $cv -> decryptedReport($entcryptedText, $key);
+            $entcryptedText = $cv -> entcryptedReport($source, $key, $keyLen);
+            $cv -> decryptedReport($entcryptedText, $key);
+        }
     }
-}
+    //-----------------------------------------
+    if($keysError)
+    {
+        $repStr =[
+            "txtLen" => "Text length",
+            "keyE" => "Original key",
+            "keyD" => "Recovered key",
+            "fuzzySearchKey" => "Corrected key",
+            "ok" => "OK",
+        ];
 
+       $strT = "text";
+       $cSources = count($sources);
+       if($cSources > 1) $strT .= "s";
+       $strK = "key";
+       $cKeys = count($randomWords);
+       if($cKeys > 1) $strK .= "s";
+
+       $totalTest = $cSources * $cKeys;
+       echo <<<HTML
+        <h2>Recovered key correction report
+        using the fuzzySearchKeys method
+        of the VigenereCipher class
+
+        Tested on $cSources $strT, each using $cKeys $strK
+
+        <table align=center class="rec_rep">
+        HTML;
+
+        foreach($keysError as $item){
+            foreach($item as $k => $v){
+                if($k == "ok")
+                    $v = $v?"&#9989":"&nbsp;";
+                echo "<tr><td align=right>{$repStr[$k]}: </td><td>$v</td></tr>";
+            }
+            echo "<tr><td> &nbsp;</td><td> &nbsp;</td></tr>";
+        }
+
+    }
+    echo "</table></h2>";
 }
-########################################################
 
 ?>

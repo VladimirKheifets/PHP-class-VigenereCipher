@@ -96,3 +96,8 @@ span{
 
 .err{color: red}
 
+.rec_rep td{
+    font-size:  12pt;
+    letter-spacing: normal;
+}
+

@@ -59,8 +59,96 @@ Commanding Admiral of submarines, s.M.H.s. east, and Comsubs east from Chief of 
 >[Source text for entcrypted - Translation (preliminary)](https://enigma.hoerenberg.com/index.php?cat=The%20U534%20messages&page=P1030685)
 >
 >
+#### Example for recovered keys correction (fuzzy search) after Vigenere Cipher breaking
+
+```php
+
+    Recovered key correction report
+    using the fuzzySearchKeys method
+    of the VigenereCipher class
+
+    Tested on 7 texts, each using 11 keys
+
+    Text length:    123
+    Original key:   PROPULSION
+    Recovered key:  PEOPRLSION
+    Corrected key:  PROPULSION
+    OK:     ✅
+
+    Text length:    123
+    Original key:   HEMATOLOGIC
+    Recovered key:  WXMZTOMOGIC
+    Corrected key:  HEMATOLOGIC
+    OK:     ✅
+
+    Text length:    148
+    Original key:   BUNS
+    Recovered key:  BUND
+    Corrected key:  BUNS
+    OK:     ✅
+
+    Text length:    148
+    Original key:   TIDALLY
+    Recovered key:  TEDALLY
+    Corrected key:  TIDALLY
+    OK:     ✅
+
+    Text length:    148
+    Original key:   OFFSHORE
+    Recovered key:  OFFDHOQP
+    Corrected key:  OFFSHORE
+    OK:     ✅
+
+    Text length:    148
+    Original key:   BREAKFAST
+    Recovered key:  BRPAKFAST
+    Corrected key:  BREAKFAST
+    OK:     ✅
+
+    Text length:    148
+    Original key:   HEMATOLOGIC
+    Recovered key:  HEMLIOLOGIC
+    Corrected key:  HEMATOLOGIC
+    OK:     ✅
+
+    Text length:    148
+    Original key:   TORMENTINGLY
+    Recovered key:  TORYENTINGKI
+    Corrected key:  TORMENTINGLY
+    OK:     ✅
+
+    Text length:    240
+    Original key:   OFFSHORE
+    Recovered key:  OXFSHORE
+    Corrected key:  OFFSHORE
+    OK:     ✅
+
+    Text length:    240
+    Original key:   PROPULSION
+    Recovered key:  PROPKLSION
+    Corrected key:  PROPULSION
+    OK:     ✅
+
+    Text length:    240
+    Original key:   TORMENTINGLY
+    Recovered key:  TORMVNJIAGLQ
+    Corrected key:  TORMENTINGLY
+    OK:     ✅
+
+    Text length:    271
+    Original key:   TORMENTINGLY
+    Recovered key:  TOVMENTINGLY
+    Corrected key:  TORMENTINGLY
+    OK:     ✅
+
+    Text length:    781
+    Original key:   BREAKFAST
+    Recovered key:  BREAKFASE
+    Corrected key:  BREAKFAST
+    OK:     ✅
 
 
+```
 
 ### 1. PHP-class VigenereCipher
 
@@ -82,7 +170,6 @@ Commanding Admiral of submarines, s.M.H.s. east, and Comsubs east from Chief of 
 ### File VigenereCipher.php
 
 ```php
-
 <?PHP
 
 /*
@@ -338,32 +425,56 @@ class VigenereCipher{
     }
 
     //---------------------------------------------------------------------------
+
     private function keylengthsToKeyDec($entText, $clearText, $keysLen){
 
         $output =  [];
-        $SDarr = [];
+
         $languageICmin = self::$languageICmin;
-        foreach ($keysLen as $iKey=>$keyLen)
+        foreach ($keysLen as $keyLen)
         {
             $key = $this ->  findKey($clearText, $keyLen);
             $decText = $this -> decrypter($entText, $key);
             $IC = $this -> getIndexCoincidence($decText);
-            $NGramsFreq = $this -> getNGramsFreq($decText);
-            $SDarr[$iKey] = $SD = $this -> getDeviationStats($NGramsFreq) -> standardDeviation;
-            $tmp = compact("decText", "key", "keyLen", "IC", "SD");
-            if(debug) echo  "184: $keyLen $key  $IC $SD \n $decText<hr>";
 
-            $output[$iKey][] = $tmp;
-            if(debug) echo  "191: $keyLen $key $IC $SD\n";
+            $tmp = compact("decText", "key", "keyLen", "IC");
+            if(debug) echo  "308: $keyLen $key  $IC $languageICmin\n $decText<hr>";
+            //if(round($IC, 2) >= $languageICmin)
+            if($IC >= $languageICmin)
+            {
+                if(self::clearKey($key, $keyLen))
+                    $tmp = compact("decText", "key", "keyLen", "IC");
+                $output[] = $tmp;
+                if(debug) echo  "191: $keyLen $key $IC \n";
+                break;
+            }
+
         }
-        if($SDarr){
-            $maxSD = max($SDarr);
-            $iS = array_search($maxSD, $SDarr);
-            return $output[$iS];
-        }
-        else
-            return $output;
+        return $output;
     }
+
+    //---------------------------------------------------------------------------
+
+    static function clearKey(&$key, &$keyLen){
+        $i=2;
+        while($i < $keyLen){
+           $nRep = $keyLen/$i;
+           if($keyLen % $i === 0)
+           {
+               $subPattern = substr($key, 0, $i);
+               $pattern = "/^($subPattern){".$nRep."}$/";
+               if(preg_match($pattern, $key))
+               {
+                    $key = $subPattern;
+                    $keyLen = $i;
+                    return true;
+               }
+           }
+           $i++;
+        }
+        return false;
+    }
+
     //---------------------------------------------------------------------------
     public function getIndexCoincidence($entText){
 
@@ -398,20 +509,28 @@ class VigenereCipher{
             }
 
             $IC = $this -> getIndexCoincidence($block);
-            if($IC>0)
+            if($IC > 0)
                 $keysLenIC[$keyLen] = $IC;
         }
 
         $keysLen = [];
 
+        /*
         $medians  = $this->getQuantileStats($keysLenIC) -> Q2;
 
         foreach($keysLenIC as $keyLen=>$IC){
+            //if($keyLen < 7) $IC *= 1.05;
+            //else if($keyLen > 6) $IC *= 1.5;
+            echo "325: $keyLen $IC $medians ".($IC >= $medians)."\n";
             if($IC >= $medians)
                 $keysLen[] = $keyLen;
             else
                 unset($keysLenIC[$keyLen]);
         }
+        */
+        arsort($keysLenIC);
+        //print_r($keysLenIC);
+        $keysLen = array_keys($keysLenIC);
 
         return $keysLenIC;
     }
@@ -557,29 +676,21 @@ class VigenereCipher{
 
     //-----------------------------------------------------
 
-    public function cribDraggingDecrypter($word){
+    public function fuzzySearchKeys($word){
         $pattB = "~\b";
         $pattE = "\b~iu";
         $wordInUperCase = strtoupper($word) === $word;
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        /*
-        $wordPatern = $word;
-        preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m);
-        if(count($m[0]) == 1){
-            return 1;
-        }
-        */
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         $subPattern = [];
-        for($i=0; $i<strlen($word); $i++){
+        $wordLen = strlen($word);
+        for($i=0; $i<$wordLen; $i++){
             $tmp = $word;
             $tmp[$i] = ".";
             $subPattern[] = $tmp;
         }
         $wordPatern = "(".implode("|",$subPattern).")";
         preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m[0]);
-
+        //print_r($m[0]);
         if( self::arrayChangeValueCase($m[0][0]) )
         {
             return $m[0][0];
@@ -593,7 +704,8 @@ class VigenereCipher{
             $k = strlen($subPattern);
             $wordPatern = str_pad($subPattern, $wordLen, ".");
             preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m[1]);
-
+            //echo "171:$wordLen $i C: ".count($m[1][0]),"\n";
+            //print_r($m[1][0]);
             if(!$m[1][0])
             {
                 $subPattern[$k-1] = ".";
@@ -602,6 +714,12 @@ class VigenereCipher{
                 break;
             else
             {
+                //echo "583:$wordLen $i C: ".count($m[1][0]),"\n";
+                if(count($m[1][0]) <= $wordLen*2){ //$wordLen
+                    //self::arrayChangeValueCase($m[1][0]);
+                    break;
+                }
+
                 $i += 1;
                 if(isset($word[$i]))
                     $subPattern .= $word[$i];
@@ -610,6 +728,14 @@ class VigenereCipher{
             }
         }
 
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if($wordLen > 6)
+        {
+            $subPattern = str_pad(substr($word,-4), $wordLen, ".",STR_PAD_LEFT);
+            preg_match_all($pattB.$subPattern.$pattE,  self::$dictionary, $m[2]);
+            self::arrayChangeValueCase($m[2][0]);
+            $m[1][0] = array_unique(array_merge($m[1][0], $m[2][0]));
+        }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~
         if(count($m[1][0]) == 1 )
             return $m[1][0];
@@ -761,7 +887,7 @@ private function NGramsFreqToStats($txt){
 //-----------------------------------------------------
 
     public function decryptedReport($entcryptedText, $key=null){
-
+    global $keysError;
     global $keysLenFromTo;
         if($_POST['inputTxt'] == 3 )
         {
@@ -776,6 +902,7 @@ private function NGramsFreqToStats($txt){
 
        if($key)
        {
+            $fuzzySearchKey="";
            $decryptedText = $this -> decrypter($entcryptedText, $key );
 
            echo <<<HTML
@@ -795,6 +922,7 @@ private function NGramsFreqToStats($txt){
            {
                 extract($val);
                 extract($this->NGramsFreqToStats($decText));
+                $prevIC = $IC;
                 $statReport = self::statReport($IC, $SD, $IQR);
                 echo <<<HTML
 
@@ -810,13 +938,14 @@ private function NGramsFreqToStats($txt){
                 HTML;
               $keyD = $key;
 
-
-              $res = $this -> cribDraggingDecrypter($keyD);
+              $res = $this -> fuzzySearchKeys($keyD);
+              if(debug) echo "805: fuzzySearchKeys\n";
+              if(debug) print_r($res);
               $decryptedTextArr = [];
               $ICarr = [];
-              foreach($res as $iR => $cribDraggingKey)
+              foreach($res as $iR => $fuzzySearchKey)
               {
-                    $decryptedTextArr[$iR] = $this -> decrypter($entcryptedText, $cribDraggingKey );
+                    $decryptedTextArr[$iR] = $this -> decrypter($entcryptedText, $fuzzySearchKey );
                     $NGramsFreq = $this -> getNGramsFreq($decryptedTextArr[$iR]);
                     extract($this->NGramsFreqToStats($decryptedTextArr[$iR]));
                     $statReport = self::statReport($IC, $SD, $IQR);
@@ -829,26 +958,28 @@ private function NGramsFreqToStats($txt){
                     {
                         echo <<<HTML
                         $statReport
-                        <b>Corrected key:</b> $cribDraggingKey(length: $keyLen)
+                        <b>Corrected key:</b> $fuzzySearchKey(length: $keyLen)
                         <b>Decrypted text:</b>
                         <div>{$decryptedTextArr[$iR]}</div>
+                        <hr>
                         HTML;
                     }
               }
 
-              $iR  = array_search(max($SDarr), $SDarr);
-              $cribDraggingKey = $res[$iR];
+              $iR  = array_search(max($ICarr), $ICarr);
+              $fuzzySearchKey = $res[$iR];
                 $IC = $ICarr[$iR];
                 $SD = $SDarr[$iR];
                 $IQ = $IQRarr[$iR];
-              if($cribDraggingKey != $keyD AND $ICarr[$iR] > self::$languageICmin)
+
+              if($fuzzySearchKey != $keyD )
               {
                      $statReport = self::statReport($IC, $SD, $IQR,1);
                      echo <<<HTML
-                     <b>Key correction (Crib Dragging):</b>
+                     <b>Key correction (Fuzzy Search):</b>
 
-                     The key was corrected using the <b>crib dragging method</b>.
-                     <b>Corrected key:</b> $cribDraggingKey(length: $keyLen)
+                     The key was corrected using the <b>Fuzzy Search method</b>.
+                     <b>Corrected key:</b> $fuzzySearchKey(length: $keyLen)
                      $statReport
                      <b>Final decrypted text:</b>
                      <div>{$decryptedTextArr[$iR]}</div>
@@ -856,8 +987,15 @@ private function NGramsFreqToStats($txt){
                      HTML;
               }
            }
+           if(isset($keyE) AND isset($keyD)){
+            $txtLen = strlen($entcryptedText);
+            $ok = $fuzzySearchKey ===  $keyE;
+                if($keyD != $keyE )  $keysError[] = compact("txtLen","keyE","keyD","fuzzySearchKey", "ok");
+           }
+
 
        echo "<hr>";
+
     }
 
 //-----------------------------------------------------
@@ -887,157 +1025,160 @@ private function NGramsFreqToStats($txt){
 ### 2. File  index.php
 
 ```php
+<!--
 
-    <!--
+Demo PHP-class VigenereCipher
+Version: 1.0, 2026-07-22
+Author: Vladimir Kheifets (vladimir.kheifets.@online.de)
+Copyright (c) 2026 Vladimir Kheifets All Rights Reserved
 
-    Demo PHP-class VigenereCipher
-    Version: 1.0, 2026-07-22
-    Author: Vladimir Kheifets (vladimir.kheifets.@online.de)
-    Copyright (c) 2026 Vladimir Kheifets All Rights Reserved
+-->
 
-    -->
 
-    <html>
-    <head>
-    <meta name="language" content="en">
-    <title>Demo PHP-Class VigenereCipher</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1,
-    user-scalable=no, user-scalable=0" >
-    <meta name="revisit-after" content="1 days">
-    <meta name="author" content="webdesign developer@alto-booking.com">
-    <meta name="copyright" content="Alto Booking Developer 2026">
-    <meta name="abstract" content="Demo PHP-class VigenereCipher">
-    <meta name="keywords" content="PHP-class,Vigenere cipher,entcrypted,decrypted, find key, ">
-    <meta name="description" content="PHP-class VigenereCipher. Entcrypted and decrypted with a known key, find key an unknown key and decrypted">
-    <link rel="icon" href="../favicon.ico?v=<?=time();?>" type="image/x-icon">
-    <link rel="stylesheet" href="index.css" >
-    </head>
-    <body>
+<html>
+<head>
+<meta name="language" content="en">
+<title>Demo PHP-Class VigenereCipher</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1,
+user-scalable=no, user-scalable=0" >
+<meta name="revisit-after" content="1 days">
+<meta name="author" content="webdesign developer@alto-booking.com">
+<meta name="copyright" content="Alto Booking Developer 2026">
+<meta name="abstract" content="Demo PHP-class VigenereCipher">
+<meta name="keywords" content="PHP-class,Vigenere cipher,entcrypted,decrypted, find key, ">
+<meta name="description" content="PHP-class VigenereCipher. Entcrypted and decrypted with a known key, find key an unknown key and decrypted">
+<link rel="icon" href="../favicon.ico?v=<?=time();?>" type="image/x-icon">
+<link rel="stylesheet" href="index.css" >
+</head>
+<body>
 
-    <h1>Demo PHP-Class VigenereCipher</h1>
-    <h2>You can add characters to the classic Vigenere square.</h2>
-    <form method="post" action = "" ><input name="all" type="checkbox" value="all">Select all
-    <input name="extend[]" type="checkbox" value="d">Digits [ 0 &divide; 9 ]
-    <input name="extend[]" type="checkbox" value=" ">Space [ ]
-    <input name="extend[]" type="checkbox" value="-">Hyphen [ - ]
-    <input name="extend[]" type="checkbox" value="!">Exclamation mark [ ! ]
-    <input name="extend[]" type="checkbox" value="?">Question mark [ ? ]
-    <input name="extend[]" type="checkbox" value=".">Period [ . ]
-    <input name="extend[]" type="checkbox" value=",">Comma [ , ]
-    <input name="extend[]" type="checkbox" value="'">Apostrophe [ ' ]
-    <input name="extend[]" type="checkbox" value='"'>Double quote [ " ]
-    <hr><input name="randomKey" type="radio" value=1 checked>Apply random encryption keys
-    <input name="randomKey" type="radio" value=2 >Decryption with an unknown key up
-    <input name="randomKey" type="radio" value=3><input name="key" type="text" value='' placeholder = "Enter an encryption key (2 &divide;12 letters)" required  >
-    <hr><input name="inputTxt" type="radio" value=1 checked>Apply prepareid sorce texts
-    <input name="inputTxt" type="radio" value=2 >Enter of source text for encryption
-    <input name="inputTxt" type="radio" value=3 >Enter of encrypted text for decryption
-    <textarea name="txt" readonly></textarea><span></span>
-    <hr><input name="show" type="checkbox" value="1">Show Vigenere square<hr>
-    <input type="submit" name="send" value="Start">
+<h1>Demo PHP-Class VigenereCipher</h1>
+<h2>You can add characters to the classic Vigenere square.</h2>
+<form method="post" action = "" ><input name="all" type="checkbox" value="all">Select all
+<input name="extend[]" type="checkbox" value="d">Digits [ 0 &divide; 9 ]
+<input name="extend[]" type="checkbox" value=" ">Space [ ]
+<input name="extend[]" type="checkbox" value="-">Hyphen [ - ]
+<input name="extend[]" type="checkbox" value="!">Exclamation mark [ ! ]
+<input name="extend[]" type="checkbox" value="?">Question mark [ ? ]
+<input name="extend[]" type="checkbox" value=".">Period [ . ]
+<input name="extend[]" type="checkbox" value=",">Comma [ , ]
+<input name="extend[]" type="checkbox" value="'">Apostrophe [ ' ]
+<input name="extend[]" type="checkbox" value='"'>Double quote [ " ]
+<hr><input name="randomKey" type="radio" value=1 checked>Apply random encryption keys
+<input name="randomKey" type="radio" value=2 >Decryption with an unknown key up
+<input name="randomKey" type="radio" value=3><input name="key" type="text" value='' placeholder = "Enter an encryption key (2 &divide;12 letters)" required  >
+<hr><input name="inputTxt" type="radio" value=1 checked>Apply prepareid sorce texts
+<input name="inputTxt" type="radio" value=2 >Enter of source text for encryption
+<input name="inputTxt" type="radio" value=3 >Enter of encrypted text for decryption
+<textarea name="txt" readonly></textarea><span></span>
+<hr><input name="show" type="checkbox" value="1">Show Vigenere square<hr>
+<input type="submit" name="send" value="Start">
 
-    </form>
+</form>
 
-    <hr>
-    <script src="index.js"></script>
+<hr>
+<script src="index.js"></script>
 
-    <?PHP
+<?PHP
 
-    $chSelected=[];
+$chSelected=[];
 
-    if(filter_input(INPUT_POST, "send")){
+if(filter_input(INPUT_POST, "send")){
 
-    $freqAlpha = json_decode(file_get_contents("freqAlphaEngExtended.json"), 1);
-    echo "\n<script>\n";
-    if(isset($_POST["show"]))
-        echo "show.checked = true;";
+$freqAlpha = json_decode(file_get_contents("freqAlphaEngExtended.json"), 1);
+echo "\n<script>\n";
+if(isset($_POST["show"]))
+    echo "show.checked = true;";
 
-    if(isset($_POST["randomKey"])){
-        $i = $_POST["randomKey"];
-        $val = $_POST["key"];
-        $val = str_replace(["'",'"'],["\'",'\"'],$val);
-        echo "checKeyOption($i,'$val');\n";
-    }
+if(isset($_POST["randomKey"])){
+    $i = $_POST["randomKey"];
+    $val = $_POST["key"];
+    $val = str_replace(["'",'"'],["\'",'\"'],$val);
+    echo "checKeyOption($i,'$val');\n";
+}
 
-    if(isset($_POST["inputTxt"])){
-       $i = $_POST["inputTxt"];
-       $val = $_POST["txt"];
-       $val = str_replace(["'",'"',PHP_EOL],["\'",'\"'," "],$val);
-       echo "checkInputTxt($i,'$val');\n";
-    }
-    echo "\n</script>\n";
+if(isset($_POST["inputTxt"])){
+   $i = $_POST["inputTxt"];
+   $val = $_POST["txt"];
+   $val = str_replace(["'",'"',PHP_EOL],["\'",'\"'," "],$val);
+   echo "checkInputTxt($i,'$val');\n";
+}
+echo "\n</script>\n";
 
-    if(isset($_POST["extend"]))
+if(isset($_POST["extend"]))
+{
+    echo "<script>";
+    echo "let val = [];";
+    foreach($_POST["extend"] as $value)
     {
-        echo "<script>";
-        echo "let val = [];";
-        foreach($_POST["extend"] as $value)
-        {
-            $chSelected[]=$value;
-            if($value=='"')$value = '\\"';
-            ?>
-            val.push("<?=$value?>");
-            <?
-        }
+        $chSelected[]=$value;
+        if($value=='"')$value = '\\"';
         ?>
-        checked(<?=isset($_POST["all"])?>);
-        </script>
+        val.push("<?=$value?>");
         <?
     }
+    ?>
+    checked(<?=isset($_POST["all"])?>);
+    </script>
+    <?
+}
 
-    if(!filter_input(INPUT_POST, "send"))
-        exit;
+if(!filter_input(INPUT_POST, "send"))
+    exit;
 
-    if($chSelected)
+if($chSelected)
+{
+    if(!in_array("d", $chSelected))
     {
-        if(!in_array("d", $chSelected))
+        foreach(range("0","9") as $dig)
         {
-            foreach(range("0","9") as $dig)
-            {
-               unset($freqAlpha[$dig]);
-            }
-        }
-
-
-        foreach(array_diff(array_keys($freqAlpha),range("A","Z"),range("0","9")) as $key)
-        {
-            if(!in_array($key, $chSelected))  unset($freqAlpha[$key]);
-        }
-    }
-    else
-    {
-
-        foreach(array_keys($freqAlpha) as $key)
-        {
-            if(preg_match("/[^\p{L}]/", $key))
-             unset($freqAlpha[$key]);
+           unset($freqAlpha[$dig]);
         }
     }
 
 
-    ############################################################
-    echo "<pre>";
-
-    require("VigenereCipher.php");
-    require("sources.php");
-
-
-    $cv = new VigenereCipher($freqAlpha);
-    $cv -> setDictionary();
-
-    if(isset($_POST["show"]))
-        $cv -> showVigenеreSquare();
-
-
-    $keysLenFromTo = [2,12];
-    $error = [];
-    define("debug", false);
-
-    if($inputTxt = filter_input(INPUT_POST, "inputTxt") == 3)
+    foreach(array_diff(array_keys($freqAlpha),range("A","Z"),range("0","9")) as $key)
     {
-        $cv -> decryptedReport($entcryptedText, strtoupper($_POST["key"]));
+        if(!in_array($key, $chSelected))  unset($freqAlpha[$key]);
     }
+}
+else
+{
+
+    foreach(array_keys($freqAlpha) as $key)
+    {
+        if(preg_match("/[^\p{L}]/", $key))
+         unset($freqAlpha[$key]);
+    }
+}
+
+
+############################################################
+echo "<pre>";
+
+require("VigenereCipher.php");
+require("sources.php");
+
+
+$cv = new VigenereCipher($freqAlpha);
+$cv -> setDictionary();
+$cv -> setStatNGramsFreq();
+
+if(isset($_POST["show"]))
+    $cv -> showVigenеreSquare();
+
+
+$keysLenFromTo = [2,12];
+$error = [];
+define("debug", false);
+$keysError = [];
+
+if($inputTxt = filter_input(INPUT_POST, "inputTxt") == 3)
+{
+    $cv -> decryptedReport($entcryptedText, strtoupper($_POST["key"]));
+}
+
 
     $sourcesCount = count($sources);
     $keysCount = count($randomWords);
@@ -1053,12 +1194,49 @@ private function NGramsFreqToStats($txt){
             $cv -> decryptedReport($entcryptedText, $key);
         }
     }
+    //-----------------------------------------
+    if($keysError)
+    {
+        $repStr =[
+            "txtLen" => "Text length",
+            "keyE" => "Original key",
+            "keyD" => "Recovered key",
+            "fuzzySearchKey" => "Corrected key",
+            "ok" => "OK",
+        ];
 
-  }
+       $strT = "text";
+       $cSources = count($sources);
+       if($cSources > 1) $strT .= "s";
+       $strK = "key";
+       $cKeys = count($randomWords);
+       if($cKeys > 1) $strK .= "s";
 
+       $totalTest = $cSources * $cKeys;
+       echo <<<HTML
+        <h2>Recovered key correction report
+        using the fuzzySearchKeys method
+        of the VigenereCipher class
+
+        Tested on $cSources $strT, each using $cKeys $strK
+
+        <table align=center class="rec_rep">
+        HTML;
+
+        foreach($keysError as $item){
+            foreach($item as $k => $v){
+                if($k == "ok")
+                    $v = $v?"&#9989":"&nbsp;";
+                echo "<tr><td align=right>{$repStr[$k]}: </td><td>$v</td></tr>";
+            }
+            echo "<tr><td> &nbsp;</td><td> &nbsp;</td></tr>";
+        }
+
+    }
+    echo "</table></h2>";
+}
 
 ?>
-
 ```
 
 ### 3. File sources.php
@@ -1448,5 +1626,10 @@ private function NGramsFreqToStats($txt){
     }
 
     .err{color: red}
+
+    .rec_rep td{
+    font-size:  12pt;
+    letter-spacing: normal;
+}
 
 ```
