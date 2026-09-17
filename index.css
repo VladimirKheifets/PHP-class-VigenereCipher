@@ -23,10 +23,12 @@ h1,h2{
   font-weight: normal;
   font-size: 20px;
   text-align: center;
+
 }
 
 h2{
   font-size: 12pt;
+  margin: 0 0 0 0;
 }
 
 textarea{
@@ -101,3 +103,25 @@ span{
     letter-spacing: normal;
 }
 
+#scrollup {
+    position: fixed;
+    opacity: 0.5;
+    background: rgba(170, 170, 170, 0.6);
+    caret-color: rgba(170, 170, 170, 0.6);
+    border-radius: 5px;
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    bottom: 20px;
+    left:20px;
+    display: none;
+    cursor: pointer;
+    z-index:9999;
+    font-size: 20px;
+    padding:3px;
+    color:#FFFFFF;
+}
+
+#scrollup:hover{
+    opacity:0.8;
+    filter:alpha(opacity=80);
+}

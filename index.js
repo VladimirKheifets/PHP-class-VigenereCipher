@@ -4,7 +4,6 @@ Version: 1.0, 2026-07-22
 Author: Vladimir Kheifets (vladimir.kheifets.@online.de)
 Copyright (c) 2026 Vladimir Kheifets All Rights Reserved
 */
-
 const show = document.querySelectorAll("input[name='show']")[0];
 const chAll = document.querySelectorAll("input[name='all']")[0];
 const ch = document.querySelectorAll("input[name='extend[]']");
@@ -14,6 +13,8 @@ const inputTxt = document.querySelectorAll("input[name='inputTxt']");
 const txt = document.querySelectorAll("textarea")[0];
 const txtL = document.querySelectorAll("span")[0];
 const send = document.querySelectorAll("input[name='send']")[0];
+const goTop = document.querySelectorAll("#scrollup")[0];
+
 const maxTxtLen = 150;
 //-------------------------------------------
 
@@ -223,3 +224,13 @@ txt.addEventListener("input", (e)=>{
 
 //--------------------------------------------
 
+document.addEventListener("scroll", () => {
+   let disp = window.scrollY>0 ? "block":"none";
+   goTop.style.display = disp;
+});
+
+//--------------------------------------------
+
+goTop.addEventListener("click", ()=>{
+    window.scrollTo(0,0);
+});

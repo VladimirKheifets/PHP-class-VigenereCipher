@@ -49,10 +49,9 @@ user-scalable=no, user-scalable=0" >
 <input type="submit" name="send" value="Start">
 
 </form>
-
-<hr>
+<div id="scrollup" title="Top">&#x25B2;</div>
 <script src="index.js"></script>
-
+<hr>
 <?PHP
 
 $chSelected=[];
@@ -208,5 +207,6 @@ if($inputTxt = filter_input(INPUT_POST, "inputTxt") == 3)
     }
     echo "</table></h2>";
 }
-
 ?>
+</body>
+</html>
