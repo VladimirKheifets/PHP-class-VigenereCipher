@@ -257,7 +257,6 @@ class VigenereCipher{
 	private function keylengthsToKeyDec($entText, $clearText, $keysLen){
 
 		$output =  [];
-
 		$languageICmin = self::$languageICmin;
 		foreach ($keysLen as $keyLen)
 		{
@@ -342,22 +341,7 @@ class VigenereCipher{
 		}
 
 		$keysLen = [];
-
-		/*
-		$medians  = $this->getQuantileStats($keysLenIC) -> Q2;
-
-		foreach($keysLenIC as $keyLen=>$IC){
-			//if($keyLen < 7) $IC *= 1.05;
-			//else if($keyLen > 6) $IC *= 1.5;
-			echo "325: $keyLen $IC $medians ".($IC >= $medians)."\n";
-			if($IC >= $medians)
-				$keysLen[] = $keyLen;
-			else
-				unset($keysLenIC[$keyLen]);
-		}
-		*/
 		arsort($keysLenIC);
-		//print_r($keysLenIC);
 		$keysLen = array_keys($keysLenIC);
 
 		return $keysLenIC;
@@ -508,7 +492,7 @@ class VigenereCipher{
         $pattB = "~\b";
         $pattE = "\b~iu";
         $wordInUperCase = strtoupper($word) === $word;
-
+        /**/
         $subPattern = [];
         $wordLen = strlen($word);
         for($i=0; $i<$wordLen; $i++){
@@ -518,7 +502,7 @@ class VigenereCipher{
         }
         $wordPatern = "(".implode("|",$subPattern).")";
         preg_match_all($pattB.$wordPatern.$pattE,  self::$dictionary, $m[0]);
-        //print_r($m[0]);
+
         if( self::arrayChangeValueCase($m[0][0]) )
         {
             return $m[0][0];
@@ -527,7 +511,8 @@ class VigenereCipher{
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~
         $i=0;
         $wordLen = strlen($word);
-        $subPattern = $word[0];
+        //$subPattern = $word[0];
+		$subPattern = ".";
         while($i < $wordLen){
             $k = strlen($subPattern);
             $wordPatern = str_pad($subPattern, $wordLen, ".");
@@ -569,6 +554,7 @@ class VigenereCipher{
             return $m[1][0];
         else
             return array_unique(array_merge($m[0][0], $m[1][0]));
+
     }
 
 	//-----------------------------------------------------
@@ -776,12 +762,11 @@ private function NGramsFreqToStats($txt){
                     $decryptedTextArr[$iR] = $this -> decrypter($entcryptedText, $fuzzySearchKey );
                     $NGramsFreq = $this -> getNGramsFreq($decryptedTextArr[$iR]);
                     extract($this->NGramsFreqToStats($decryptedTextArr[$iR]));
-					$statReport = self::statReport($IC, $SD, $IQR);
-
                     $ICarr[$iR] = $IC = $this -> getIndexCoincidence($decryptedTextArr[$iR]);
                     $SDarr[$iR] = $SD;
                     $IQRarr[$iR] = $IQR;
                     $statReport = self::statReport($IC, $SD, $IQR);
+                    $IC_SDarr[$iR] = $IC + $SD;
                     if(debug)
                     {
 						echo <<<HTML
@@ -794,7 +779,9 @@ private function NGramsFreqToStats($txt){
 					}
               }
 
-              $iR  = array_search(max($ICarr), $ICarr);
+              //$iR  = array_search(max($ICarr), $ICarr);
+			  $iR  = array_search(max($IC_SDarr), $IC_SDarr);
+
               $fuzzySearchKey = $res[$iR];
 				$IC = $ICarr[$iR];
 				$SD = $SDarr[$iR];

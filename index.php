@@ -143,7 +143,7 @@ if(isset($_POST["show"]))
 
 $keysLenFromTo = [2,12];
 $error = [];
-define("debug", false);
+define("debug", filter_input(INPUT_GET, "debug"));
 $keysError = [];
 
 if($inputTxt = filter_input(INPUT_POST, "inputTxt") == 3)
